@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: expense-manager-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - expense-manager-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backend/expensemanagerbackend
+      dockerfile: Dockerfile
+    container_name: expense-manager-backend
+    ports:
+      - "${SERVER_PORT}:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=validate
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - expense-manager-network
+
+  # Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: expense-manager-frontend
+    ports:
+      - "${FRONTEND_PORT}:80"
+    depends_on:
+      - backend
+    networks:
+      - expense-manager-network
+
+volumes:
+  postgres_data:
+
+networks:
+  expense-manager-network:
+    driver: bridge
