@@ -1,15 +1,22 @@
 package com.em.expensemanagerbackend.config;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.password.NoOpPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -25,12 +32,14 @@ public class SecurityConfig {
             corsConfiguration.setAllowCredentials(true);
             return corsConfiguration;
         }))
-                // Configure authorization
+                // Configure authorization - DEVELOPMENT MODE: Allow all requests
                 .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/assets/**", "/api/health", "/api/test").permitAll()
-                .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
                 )
+                // Configure session management (stateless for JWT)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // JWT filter disabled for development
+                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 // Configure headers
                 .headers(headers -> headers
                 .frameOptions(frameOptions -> frameOptions.deny())
@@ -46,5 +55,10 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
     }
 }
