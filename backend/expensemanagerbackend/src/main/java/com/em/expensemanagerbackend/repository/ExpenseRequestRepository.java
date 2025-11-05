@@ -40,4 +40,20 @@ public interface ExpenseRequestRepository extends JpaRepository<ExpenseRequest, 
     // Find pending expenses for finance review (all PENDING_FINANCE status)
     @Query("SELECT e FROM ExpenseRequest e WHERE e.status = :status ORDER BY e.createdAt ASC")
     List<ExpenseRequest> findPendingFinanceApproval(@Param("status") ExpenseStatus status);
+
+    // Find expenses approved by manager (PENDING_FINANCE and PAID statuses)
+    @Query("SELECT e FROM ExpenseRequest e WHERE e.status IN (:statuses) ORDER BY e.updatedAt DESC")
+    List<ExpenseRequest> findExpensesApprovedByManager(@Param("statuses") List<ExpenseStatus> statuses);
+
+    // Find all expenses processed by manager (approved and rejected)
+    @Query("SELECT e FROM ExpenseRequest e WHERE e.status IN (:statuses) ORDER BY e.updatedAt DESC")
+    List<ExpenseRequest> findExpensesProcessedByManager(@Param("statuses") List<ExpenseStatus> statuses);
+
+    // Find expenses approved by finance (PAID status)
+    @Query("SELECT e FROM ExpenseRequest e WHERE e.status = :status ORDER BY e.updatedAt DESC")
+    List<ExpenseRequest> findExpensesApprovedByFinance(@Param("status") ExpenseStatus status);
+
+    // Find all expenses processed by finance (approved and rejected)
+    @Query("SELECT e FROM ExpenseRequest e WHERE e.status IN (:statuses) ORDER BY e.updatedAt DESC")
+    List<ExpenseRequest> findExpensesProcessedByFinance(@Param("statuses") List<ExpenseStatus> statuses);
 }

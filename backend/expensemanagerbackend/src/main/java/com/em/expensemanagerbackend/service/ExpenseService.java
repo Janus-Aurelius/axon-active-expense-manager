@@ -102,7 +102,7 @@ public class ExpenseService {
     }
 
     /**
-     * Get expense by ID (only if it belongs to current user)
+     * Get expense by ID (with role-based access control)
      */
     @Transactional(readOnly = true)
     public ExpenseRequestResponseDto getExpenseById(Long expenseId) {
@@ -110,8 +110,20 @@ public class ExpenseService {
         ExpenseRequest expense = expenseRequestRepository.findById(expenseId)
                 .orElseThrow(() -> new RuntimeException("Expense not found"));
 
-        // Check if the expense belongs to the current user
-        if (!expense.getEmployee().getId().equals(currentUser.getId())) {
+        // Role-based access control
+        if (currentUser.getRole() == UserRole.EMPLOYEE) {
+            // Employees can only view their own expenses
+            if (!expense.getEmployee().getId().equals(currentUser.getId())) {
+                throw new RuntimeException("Access denied");
+            }
+        } else if (currentUser.getRole() == UserRole.MANAGER) {
+            // Managers can view any expense (for approval/review purposes)
+            // No additional restriction needed
+        } else if (currentUser.getRole() == UserRole.FINANCE) {
+            // Finance can view any expense (for payment processing)
+            // No additional restriction needed
+        } else {
+            // Unknown role, deny access
             throw new RuntimeException("Access denied");
         }
 
@@ -195,6 +207,51 @@ public class ExpenseService {
 
         List<ExpenseRequest> pendingExpenses = expenseRequestRepository.findPendingManagerApproval(ExpenseStatus.PENDING_MANAGER);
         return pendingExpenses.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all expenses approved by manager (for approved tab) Includes expenses
+     * with PENDING_FINANCE and PAID statuses
+     */
+    @Transactional(readOnly = true)
+    public List<ExpenseRequestResponseDto> getExpensesApprovedByManager() {
+        User currentUser = getCurrentUser();
+
+        // Verify the current user is a manager
+        if (currentUser.getRole() != UserRole.MANAGER) {
+            throw new RuntimeException("Access denied: Only managers can view approved expenses");
+        }
+
+        List<ExpenseStatus> approvedStatuses = List.of(ExpenseStatus.PENDING_FINANCE, ExpenseStatus.PAID);
+        List<ExpenseRequest> approvedExpenses = expenseRequestRepository.findExpensesApprovedByManager(approvedStatuses);
+        return approvedExpenses.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all expenses processed by manager (for history tab) Includes
+     * approved, pending finance, rejected, and paid expenses
+     */
+    @Transactional(readOnly = true)
+    public List<ExpenseRequestResponseDto> getExpensesProcessedByManager() {
+        User currentUser = getCurrentUser();
+
+        // Verify the current user is a manager
+        if (currentUser.getRole() != UserRole.MANAGER) {
+            throw new RuntimeException("Access denied: Only managers can view expense history");
+        }
+
+        List<ExpenseStatus> processedStatuses = List.of(
+                ExpenseStatus.PENDING_FINANCE, // Approved by manager
+                ExpenseStatus.REJECTED_MANAGER, // Rejected by manager
+                ExpenseStatus.REJECTED_FINANCE, // Rejected by finance (but was approved by manager)
+                ExpenseStatus.PAID // Fully approved and paid
+        );
+        List<ExpenseRequest> processedExpenses = expenseRequestRepository.findExpensesProcessedByManager(processedStatuses);
+        return processedExpenses.stream()
                 .map(this::convertToResponseDto)
                 .collect(Collectors.toList());
     }
@@ -296,6 +353,48 @@ public class ExpenseService {
 
         List<ExpenseRequest> pendingExpenses = expenseRequestRepository.findPendingFinanceApproval(ExpenseStatus.PENDING_FINANCE);
         return pendingExpenses.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all expenses approved by finance (for approved tab) Includes expenses
+     * with PAID status
+     */
+    @Transactional(readOnly = true)
+    public List<ExpenseRequestResponseDto> getExpensesApprovedByFinance() {
+        User currentUser = getCurrentUser();
+
+        // Verify the current user is finance staff
+        if (currentUser.getRole() != UserRole.FINANCE) {
+            throw new RuntimeException("Access denied: Only finance staff can view approved expenses");
+        }
+
+        List<ExpenseRequest> approvedExpenses = expenseRequestRepository.findExpensesApprovedByFinance(ExpenseStatus.PAID);
+        return approvedExpenses.stream()
+                .map(this::convertToResponseDto)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get all expenses processed by finance (for history tab) Includes approved
+     * (paid) and rejected by finance expenses
+     */
+    @Transactional(readOnly = true)
+    public List<ExpenseRequestResponseDto> getExpensesProcessedByFinance() {
+        User currentUser = getCurrentUser();
+
+        // Verify the current user is finance staff
+        if (currentUser.getRole() != UserRole.FINANCE) {
+            throw new RuntimeException("Access denied: Only finance staff can view expense history");
+        }
+
+        List<ExpenseStatus> processedStatuses = List.of(
+                ExpenseStatus.PAID, // Approved by finance
+                ExpenseStatus.REJECTED_FINANCE // Rejected by finance
+        );
+        List<ExpenseRequest> processedExpenses = expenseRequestRepository.findExpensesProcessedByFinance(processedStatuses);
+        return processedExpenses.stream()
                 .map(this::convertToResponseDto)
                 .collect(Collectors.toList());
     }

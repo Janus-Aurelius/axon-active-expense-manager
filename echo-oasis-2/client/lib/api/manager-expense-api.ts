@@ -27,8 +27,11 @@ class ManagerExpenseApiService {
       "Content-Type": "application/json",
     };
 
-    // Add dev role header for manager (for development mode)
-    headers["X-Dev-User-Role"] = "MANAGER";
+    // Add dev role header (for development mode)
+    const devRole = localStorage.getItem("dev-role");
+    if (devRole) {
+      headers["X-Dev-User-Role"] = devRole;
+    }
 
     // Add auth token if available
     const token = localStorage.getItem("auth-token");
@@ -63,6 +66,44 @@ class ManagerExpenseApiService {
     });
 
     return this.handleResponse<ExpenseResponse[]>(response);
+  }
+
+  /**
+   * Get all expenses approved by manager (for approved tab)
+   * Includes expenses with PENDING_FINANCE and PAID statuses
+   */
+  async getExpensesApprovedByManager(): Promise<ExpenseResponse[]> {
+    const response = await fetch(`${this.baseUrl}/approved-by-manager`, {
+      method: "GET",
+      headers: await this.getHeaders(),
+    });
+
+    return this.handleResponse<ExpenseResponse[]>(response);
+  }
+
+  /**
+   * Get all expenses processed by manager (for history tab)
+   * Includes approved, rejected, and paid expenses
+   */
+  async getExpensesProcessedByManager(): Promise<ExpenseResponse[]> {
+    const response = await fetch(`${this.baseUrl}/manager-history`, {
+      method: "GET",
+      headers: await this.getHeaders(),
+    });
+
+    return this.handleResponse<ExpenseResponse[]>(response);
+  }
+
+  /**
+   * Get expense by ID
+   */
+  async getExpenseById(id: number): Promise<ExpenseResponse> {
+    const response = await fetch(`${this.baseUrl}/${id}`, {
+      method: "GET",
+      headers: await this.getHeaders(),
+    });
+
+    return this.handleResponse<ExpenseResponse>(response);
   }
 
   /**

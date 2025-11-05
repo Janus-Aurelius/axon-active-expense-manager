@@ -6,6 +6,7 @@ import ExpenseTable, {
 } from "@/components/ExpenseTable";
 import { ManagerActionDialog } from "@/components/ManagerActionDialog";
 import { BatchManagerActionDialog } from "@/components/BatchManagerActionDialog";
+import ViewExpenseModal from "@/components/ViewExpenseModal";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -62,18 +63,46 @@ export default function ManagerDashboard() {
     action: null,
   });
 
-  // Convert backend data to table format
-  const convertExpenseToTableData = (
-    expense: ExpenseResponse,
-  ): ExpenseData => ({
-    id: expense.id.toString(),
-    ref: `EXP-${expense.id.toString().padStart(3, "0")}`,
-    employee: expense.employeeName,
-    amount: expenseApiService.formatAmount(expense.amount),
-    date: expenseApiService.formatDate(expense.createdAt),
-    status: expense.status.toLowerCase() as any,
-    statusLabel: expenseApiService.getStatusLabel(expense.status),
+  // View modal state
+  const [viewModal, setViewModal] = useState<{
+    open: boolean;
+    expense: ExpenseResponse | null;
+    loading: boolean;
+  }>({
+    open: false,
+    expense: null,
+    loading: false,
   });
+
+  // Convert backend data to table format
+  const convertExpenseToTableData = (expense: ExpenseResponse): ExpenseData => {
+    // Map backend status to frontend status
+    const getTableStatus = (backendStatus: string): ExpenseData["status"] => {
+      switch (backendStatus) {
+        case "PENDING_MANAGER":
+          return "pending";
+        case "PENDING_FINANCE":
+          return "approved"; // Manager approved, pending finance
+        case "PAID":
+          return "paid";
+        case "REJECTED_MANAGER":
+        case "REJECTED_FINANCE":
+          return "rejected";
+        default:
+          return "pending";
+      }
+    };
+
+    return {
+      id: expense.id.toString(),
+      ref: `EXP-${expense.id.toString().padStart(3, "0")}`,
+      employee: expense.employeeName,
+      amount: expenseApiService.formatAmount(expense.amount),
+      date: expenseApiService.formatDate(expense.createdAt),
+      status: getTableStatus(expense.status),
+      statusLabel: expenseApiService.getStatusLabel(expense.status),
+    };
+  };
 
   const pendingExpenses = pendingExpensesData.map(convertExpenseToTableData);
   const approvedExpenses = approvedExpensesData.map(convertExpenseToTableData);
@@ -95,7 +124,7 @@ export default function ManagerDashboard() {
     },
     {
       id: 3,
-      label: "Team Expenses",
+      label: "History",
       icon: Users,
       badge: stats.totalCount > 0 ? stats.totalCount.toString() : null,
     },
@@ -193,13 +222,17 @@ export default function ManagerDashboard() {
         ? "Pending Review"
         : activeTab === 2
           ? "Approved"
-          : "All Team",
+          : activeTab === 3
+            ? "History"
+            : "Overview",
     statusClassName:
       activeTab === 1
         ? "bg-yellow-100 text-yellow-800"
         : activeTab === 2
           ? "bg-green-100 text-green-800"
-          : "bg-blue-100 text-blue-800",
+          : activeTab === 3
+            ? "bg-purple-100 text-purple-800"
+            : "bg-blue-100 text-blue-800",
     lastUpdated: "Just now",
   };
 
@@ -214,9 +247,26 @@ export default function ManagerDashboard() {
     department: "Management",
   };
 
-  const handleRowAction = (expense: ExpenseData, action: string) => {
+  const handleRowAction = async (expense: ExpenseData, action: string) => {
     if (action === "approve" || action === "reject") {
       handleSingleAction(expense, action as "approve" | "reject");
+    } else if (action === "view") {
+      await handleViewExpense(expense);
+    }
+  };
+
+  const handleViewExpense = async (expense: ExpenseData) => {
+    setViewModal({ open: true, expense: null, loading: true });
+
+    try {
+      const expenseDetails = await expenseApiService.getExpenseById(
+        parseInt(expense.id),
+      );
+      setViewModal({ open: true, expense: expenseDetails, loading: false });
+    } catch (error) {
+      console.error("Failed to fetch expense details:", error);
+      setViewModal({ open: false, expense: null, loading: false });
+      // You might want to show an error toast here
     }
   };
 
@@ -363,6 +413,7 @@ export default function ManagerDashboard() {
               onSelectionChange={setSelectedExpenses}
               showActions={true}
               onRowAction={handleRowAction}
+              actionTypes={["view", "approve", "reject"]}
             />
           )}
         </div>
@@ -382,29 +433,31 @@ export default function ManagerDashboard() {
             <ExpenseTable
               data={approvedExpenses}
               columns={expenseColumns}
-              showActions={false}
+              showActions={true}
               onRowAction={handleRowAction}
+              actionTypes={["view"]}
             />
           )}
         </div>
       )}
 
-      {/* TEAM EXPENSES TAB */}
+      {/* HISTORY TAB */}
       {activeTab === 3 && !loading && (
         <div>
           <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
-            All Team Expenses
+            Expense History
           </h2>
           {teamExpenses.length === 0 ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-              No team expenses found.
+              No expense history found.
             </div>
           ) : (
             <ExpenseTable
               data={teamExpenses}
               columns={expenseColumns}
-              showActions={false}
+              showActions={true}
               onRowAction={handleRowAction}
+              actionTypes={["view"]}
             />
           )}
         </div>
@@ -429,6 +482,15 @@ export default function ManagerDashboard() {
         action={batchActionDialog.action}
         onConfirm={handleBatchActionConfirm}
         loading={loadingApprove || loadingReject}
+      />
+
+      <ViewExpenseModal
+        isOpen={viewModal.open}
+        onClose={() =>
+          setViewModal({ open: false, expense: null, loading: false })
+        }
+        expense={viewModal.expense}
+        loading={viewModal.loading}
       />
     </DashboardLayout>
   );

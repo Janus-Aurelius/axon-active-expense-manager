@@ -180,6 +180,46 @@ public class ExpenseController {
     }
 
     /**
+     * Get all expenses approved by manager (for approved tab) Includes expenses
+     * with PENDING_FINANCE and PAID statuses
+     */
+    @GetMapping("/approved-by-manager")
+    public ResponseEntity<?> getExpensesApprovedByManager() {
+        try {
+            List<ExpenseRequestResponseDto> expenses = expenseService.getExpensesApprovedByManager();
+            return ResponseEntity.ok(expenses);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Access denied")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new MessageResponse(e.getMessage()));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Error retrieving approved expenses: " + e.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * Get all expenses processed by manager (for history tab) Includes
+     * approved, rejected, and paid expenses
+     */
+    @GetMapping("/manager-history")
+    public ResponseEntity<?> getExpensesProcessedByManager() {
+        try {
+            List<ExpenseRequestResponseDto> expenses = expenseService.getExpensesProcessedByManager();
+            return ResponseEntity.ok(expenses);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Access denied")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new MessageResponse(e.getMessage()));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Error retrieving expense history: " + e.getMessage()));
+            }
+        }
+    }
+
+    /**
      * Approve a pending expense (Manager action) Changes status from
      * PENDING_MANAGER to PENDING_FINANCE
      */
@@ -247,6 +287,46 @@ public class ExpenseController {
             } else {
                 return ResponseEntity.badRequest()
                         .body(new MessageResponse("Error retrieving pending expenses: " + e.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * Get all expenses approved by finance (for approved tab) Includes expenses
+     * with PAID status
+     */
+    @GetMapping("/approved-by-finance")
+    public ResponseEntity<?> getExpensesApprovedByFinance() {
+        try {
+            List<ExpenseRequestResponseDto> expenses = expenseService.getExpensesApprovedByFinance();
+            return ResponseEntity.ok(expenses);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Access denied")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new MessageResponse(e.getMessage()));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Error retrieving approved expenses: " + e.getMessage()));
+            }
+        }
+    }
+
+    /**
+     * Get all expenses processed by finance (for history tab) Includes approved
+     * and rejected expenses
+     */
+    @GetMapping("/finance-history")
+    public ResponseEntity<?> getExpensesProcessedByFinance() {
+        try {
+            List<ExpenseRequestResponseDto> expenses = expenseService.getExpensesProcessedByFinance();
+            return ResponseEntity.ok(expenses);
+        } catch (RuntimeException e) {
+            if (e.getMessage().contains("Access denied")) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new MessageResponse(e.getMessage()));
+            } else {
+                return ResponseEntity.badRequest()
+                        .body(new MessageResponse("Error retrieving expense history: " + e.getMessage()));
             }
         }
     }

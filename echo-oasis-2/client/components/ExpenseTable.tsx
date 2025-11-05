@@ -27,6 +27,7 @@ interface ExpenseTableProps {
   onRowAction?: (expense: ExpenseData, action: string) => void;
   showActions?: boolean;
   isDarkMode?: boolean;
+  actionTypes?: ("view" | "approve" | "reject" | "edit" | "delete")[];
 }
 
 export default function ExpenseTable({
@@ -38,6 +39,7 @@ export default function ExpenseTable({
   onRowAction,
   showActions = false,
   isDarkMode = false,
+  actionTypes = ["view"],
 }: ExpenseTableProps) {
   const toggleExpense = (id: string) => {
     if (!onSelectionChange) return;
@@ -188,13 +190,59 @@ export default function ExpenseTable({
               ))}
               {showActions && (
                 <td className="px-6 py-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onRowAction?.(expense, "view")}
-                  >
-                    View
-                  </Button>
+                  <div className="flex gap-2">
+                    {actionTypes.includes("view") && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onRowAction?.(expense, "view")}
+                      >
+                        View
+                      </Button>
+                    )}
+                    {expense.status === "pending" &&
+                      actionTypes.includes("approve") && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => onRowAction?.(expense, "approve")}
+                        >
+                          Approve
+                        </Button>
+                      )}
+                    {expense.status === "pending" &&
+                      actionTypes.includes("reject") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-500"
+                          onClick={() => onRowAction?.(expense, "reject")}
+                        >
+                          Reject
+                        </Button>
+                      )}
+                    {actionTypes.includes("edit") &&
+                      expense.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => onRowAction?.(expense, "edit")}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                    {actionTypes.includes("delete") &&
+                      expense.status === "pending" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700 border-red-300 hover:border-red-500"
+                          onClick={() => onRowAction?.(expense, "delete")}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                  </div>
                 </td>
               )}
             </tr>

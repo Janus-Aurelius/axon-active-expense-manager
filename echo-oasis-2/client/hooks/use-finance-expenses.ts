@@ -10,6 +10,7 @@ import type { ExpenseResponse } from "@/lib/api/employee-expense-api";
 export function useFinanceExpenses() {
   const [pendingExpenses, setPendingExpenses] = useState<ExpenseResponse[]>([]);
   const [paidExpenses, setPaidExpenses] = useState<ExpenseResponse[]>([]);
+  const [historyExpenses, setHistoryExpenses] = useState<ExpenseResponse[]>([]);
   const [stats, setStats] = useState<FinanceStatsResponse>({
     totalExpenses: 0,
     totalAmount: 0,
@@ -39,18 +40,37 @@ export function useFinanceExpenses() {
     }
   }, []);
 
-  // Load paid expenses
+  // Load approved expenses (paid expenses)
   const loadPaidExpenses = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const expenses = await financeExpenseApiService.getPaidExpenses();
+      const expenses =
+        await financeExpenseApiService.getExpensesApprovedByFinance();
       setPaidExpenses(expenses);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to load paid expenses",
       );
       console.error("Error loading paid expenses:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load history expenses
+  const loadHistoryExpenses = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const expenses =
+        await financeExpenseApiService.getExpensesProcessedByFinance();
+      setHistoryExpenses(expenses);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to load expense history",
+      );
+      console.error("Error loading expense history:", err);
     } finally {
       setLoading(false);
     }
@@ -206,8 +226,13 @@ export function useFinanceExpenses() {
 
   // Refresh all data
   const refreshData = useCallback(async () => {
-    await Promise.all([loadPendingExpenses(), loadPaidExpenses(), loadStats()]);
-  }, [loadPendingExpenses, loadPaidExpenses, loadStats]);
+    await Promise.all([
+      loadPendingExpenses(),
+      loadPaidExpenses(),
+      loadHistoryExpenses(),
+      loadStats(),
+    ]);
+  }, [loadPendingExpenses, loadPaidExpenses, loadHistoryExpenses, loadStats]);
 
   // Load initial data
   useEffect(() => {
@@ -218,6 +243,7 @@ export function useFinanceExpenses() {
     // Data
     pendingExpenses,
     paidExpenses,
+    historyExpenses,
     stats,
 
     // State
@@ -234,6 +260,7 @@ export function useFinanceExpenses() {
     // Data loading functions
     loadPendingExpenses,
     loadPaidExpenses,
+    loadHistoryExpenses,
     loadStats,
   };
 }

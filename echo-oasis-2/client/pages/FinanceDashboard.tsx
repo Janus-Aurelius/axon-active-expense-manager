@@ -27,6 +27,7 @@ export default function FinanceDashboard() {
   const {
     pendingExpenses,
     paidExpenses,
+    historyExpenses,
     stats,
     loading,
     error,
@@ -56,15 +57,39 @@ export default function FinanceDashboard() {
 
   // Convert backend expense data to frontend ExpenseData format
   const convertToExpenseData = (expenses: ExpenseResponse[]): ExpenseData[] => {
-    return expenses.map((expense) => ({
-      id: expense.id.toString(),
-      ref: financeExpenseApiService.getExpenseReference(expense),
-      employee: expense.employeeName,
-      amount: financeExpenseApiService.formatAmount(expense.amount),
-      date: financeExpenseApiService.formatDate(expense.createdAt),
-      status: expense.status === "PAID" ? "paid" : "pending",
-      statusLabel: expense.status === "PAID" ? "Paid" : "Manager Approved",
-    }));
+    return expenses.map((expense) => {
+      let status: ExpenseData["status"];
+      let statusLabel: string;
+
+      switch (expense.status) {
+        case "PENDING_FINANCE":
+          status = "pending";
+          statusLabel = "Manager Approved";
+          break;
+        case "PAID":
+          status = "paid";
+          statusLabel = "Paid";
+          break;
+        case "REJECTED_FINANCE":
+          status = "rejected";
+          statusLabel = "Rejected by Finance";
+          break;
+        default:
+          status = "pending";
+          statusLabel = expense.status;
+          break;
+      }
+
+      return {
+        id: expense.id.toString(),
+        ref: financeExpenseApiService.getExpenseReference(expense),
+        employee: expense.employeeName,
+        amount: financeExpenseApiService.formatAmount(expense.amount),
+        date: financeExpenseApiService.formatDate(expense.createdAt),
+        status,
+        statusLabel,
+      };
+    });
   };
 
   const expenses = convertToExpenseData(pendingExpenses);
@@ -84,7 +109,13 @@ export default function FinanceDashboard() {
       icon: CheckCircle,
       badge: stats.paid > 0 ? stats.paid.toString() : null,
     },
-    { id: 3, label: "History", icon: DollarSign, badge: null },
+    {
+      id: 3,
+      label: "History",
+      icon: DollarSign,
+      badge:
+        historyExpenses.length > 0 ? historyExpenses.length.toString() : null,
+    },
   ];
 
   const handleBatchApprove = () => {
@@ -149,11 +180,22 @@ export default function FinanceDashboard() {
   ];
 
   const statusInfo = {
-    status: activeTab === 1 ? "To-Pay" : "Paid",
+    status:
+      activeTab === 1
+        ? "To-Pay"
+        : activeTab === 2
+          ? "Paid"
+          : activeTab === 3
+            ? "History"
+            : "Overview",
     statusClassName:
       activeTab === 1
         ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-        : "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+        : activeTab === 2
+          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+          : activeTab === 3
+            ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200"
+            : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
     lastUpdated: "Just now",
   };
 
@@ -390,13 +432,28 @@ export default function FinanceDashboard() {
         {activeTab === 3 && (
           <div>
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
-              History
+              Finance History
             </h2>
-            <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-              <p className="text-lg text-gray-600 dark:text-gray-400">
-                History records will appear here
-              </p>
-            </div>
+            {loading ? (
+              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+                <p className="text-lg text-gray-600 dark:text-gray-400">
+                  Loading expense history...
+                </p>
+              </div>
+            ) : convertToExpenseData(historyExpenses).length === 0 ? (
+              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+                <p className="text-lg text-gray-600 dark:text-gray-400">
+                  No expense history found
+                </p>
+              </div>
+            ) : (
+              <ExpenseTable
+                data={convertToExpenseData(historyExpenses)}
+                columns={expenseColumns}
+                showActions={false}
+                onRowAction={handleRowAction}
+              />
+            )}
           </div>
         )}
       </DashboardLayout>

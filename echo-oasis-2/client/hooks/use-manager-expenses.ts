@@ -57,22 +57,16 @@ export function useManagerExpenses(): UseManagerExpensesReturn {
       setLoading(true);
       setError(null);
 
-      // Fetch pending expenses that need manager approval
-      const pending =
-        await managerExpenseApiService.getPendingExpensesForApproval();
+      // Fetch all data in parallel for better performance
+      const [pending, approved, all] = await Promise.all([
+        managerExpenseApiService.getPendingExpensesForApproval(),
+        managerExpenseApiService.getExpensesApprovedByManager(),
+        managerExpenseApiService.getExpensesProcessedByManager(),
+      ]);
+
       setPendingExpenses(pending);
-
-      // For now, we'll filter approved expenses from all expenses
-      // In a full implementation, you might want a separate endpoint for manager-approved expenses
-      const all = pending; // For now, just show pending expenses in all
-      setAllExpenses(all);
-
-      // Filter approved expenses (those that went to PENDING_FINANCE status)
-      const approved = all.filter(
-        (expense) =>
-          expense.status === "PENDING_FINANCE" || expense.status === "PAID",
-      );
       setApprovedExpenses(approved);
+      setAllExpenses(all);
     } catch (err) {
       console.error("Error fetching manager expenses:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch expenses");

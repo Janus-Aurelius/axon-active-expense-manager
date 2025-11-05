@@ -71,16 +71,29 @@ class FinanceExpenseApiService {
   }
 
   /**
-   * Get all paid expenses (finance history)
+   * Get all expenses approved by finance (for approved tab)
+   * Includes expenses with PAID status
    */
-  async getPaidExpenses(): Promise<ExpenseResponse[]> {
-    const response = await fetch(`${this.baseUrl}/my-expenses`, {
+  async getExpensesApprovedByFinance(): Promise<ExpenseResponse[]> {
+    const response = await fetch(`${this.baseUrl}/approved-by-finance`, {
       method: "GET",
       headers: await this.getHeaders(),
     });
 
-    const expenses = await this.handleResponse<ExpenseResponse[]>(response);
-    return expenses.filter((expense) => expense.status === ExpenseStatus.PAID);
+    return this.handleResponse<ExpenseResponse[]>(response);
+  }
+
+  /**
+   * Get all expenses processed by finance (for history tab)
+   * Includes approved and rejected expenses
+   */
+  async getExpensesProcessedByFinance(): Promise<ExpenseResponse[]> {
+    const response = await fetch(`${this.baseUrl}/finance-history`, {
+      method: "GET",
+      headers: await this.getHeaders(),
+    });
+
+    return this.handleResponse<ExpenseResponse[]>(response);
   }
 
   /**
@@ -185,12 +198,12 @@ class FinanceExpenseApiService {
   async getFinanceStats(): Promise<FinanceStatsResponse> {
     try {
       // Get all expenses that went through the finance process
-      const [pendingExpenses, paidExpenses] = await Promise.all([
+      const [pendingExpenses, approvedExpenses] = await Promise.all([
         this.getPendingExpensesForApproval(),
-        this.getPaidExpenses(),
+        this.getExpensesApprovedByFinance(),
       ]);
 
-      const allExpenses = [...pendingExpenses, ...paidExpenses];
+      const allExpenses = [...pendingExpenses, ...approvedExpenses];
 
       const totalExpenses = allExpenses.length;
       const totalAmount = allExpenses.reduce(
@@ -204,8 +217,8 @@ class FinanceExpenseApiService {
         0,
       );
 
-      const paid = paidExpenses.length;
-      const paidAmount = paidExpenses.reduce(
+      const paid = approvedExpenses.length;
+      const paidAmount = approvedExpenses.reduce(
         (sum, expense) => sum + expense.amount,
         0,
       );
