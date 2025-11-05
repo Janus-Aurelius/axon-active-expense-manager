@@ -1,0 +1,675 @@
+{
+  "info": {
+    "_postman_id": "expense-manager-complete-flow",
+    "name": "Expense Manager - Complete Flow Testing",
+    "description": "Complete flow testing for the Expense Manager application including login, expense creation, manager approval, and finance approval",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Authentication",
+      "item": [
+        {
+          "name": "Login as Employee (John Smith)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('employee_token', response.token);",
+                  "    pm.environment.set('employee_user_id', response.id);",
+                  "    console.log('Employee token saved:', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"john.smith@company.com\",\n    \"password\": \"employee123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login as employee to get JWT token for expense submission"
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Manager (Robert Taylor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('manager_token', response.token);",
+                  "    pm.environment.set('manager_user_id', response.id);",
+                  "    console.log('Manager token saved:', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"robert.taylor@company.com\",\n    \"password\": \"manager123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login as manager to approve expense requests"
+          },
+          "response": []
+        },
+        {
+          "name": "Login as Finance (David Brown)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('finance_token', response.token);",
+                  "    pm.environment.set('finance_user_id', response.id);",
+                  "    console.log('Finance token saved:', response.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"david.brown@company.com\",\n    \"password\": \"finance123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login as finance team member to process final approvals"
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Employee Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "verify"]
+            },
+            "description": "Verify that the employee JWT token is valid"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User Info (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Get current authenticated user information"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints for different user roles"
+    },
+    {
+      "name": "2. Employee Flow - Submit Expense",
+      "item": [
+        {
+          "name": "Create New Expense Request",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.environment.set('expense_id', response.id);",
+                  "    console.log('Expense ID saved:', response.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Business Dinner with Client\",\n    \"description\": \"Dinner meeting with ABC Corp representatives to discuss new project proposal. Attended by 3 people from our team and 2 from client side.\",\n    \"amount\": 175.50,\n    \"receiptUrl\": \"https://example.com/receipts/dinner_20241105_001.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses"]
+            },
+            "description": "Employee submits a new expense request. Status will be PENDING_MANAGER."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Expenses (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/my-expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "my-expenses"]
+            },
+            "description": "Get all expenses submitted by the current employee"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Pending Expenses (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/my-pending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "my-pending"]
+            },
+            "description": "Get pending expenses for the current employee"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expense by ID (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}"]
+            },
+            "description": "Get specific expense details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Pending Expense (Employee)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Business Dinner with Client - Updated\",\n    \"description\": \"Dinner meeting with ABC Corp representatives to discuss new project proposal and contract terms. Attended by 3 people from our team and 2 from client side. Updated with additional details.\",\n    \"amount\": 185.75,\n    \"receiptUrl\": \"https://example.com/receipts/dinner_20241105_001_updated.jpg\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}"]
+            },
+            "description": "Update a pending expense (only works for PENDING_MANAGER or REJECTED status)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Employee submits and manages expense requests"
+    },
+    {
+      "name": "3. Manager Flow - Review & Approve",
+      "item": [
+        {
+          "name": "Get Pending Expenses for Manager Approval",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/pending-manager-approval",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "pending-manager-approval"]
+            },
+            "description": "Manager gets all expenses pending their approval"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Expense (Manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"comment\": \"Business dinner expense is reasonable and aligns with company policy. Client meeting was productive and necessary for the project. Approved for finance review.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}", "approve"]
+            },
+            "description": "Manager approves the expense, changing status from PENDING_MANAGER to PENDING_FINANCE"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Expense (Manager) - Alternative",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{manager_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"comment\": \"Expense amount exceeds the company policy limit for client dinners. Please submit a revised expense within the approved limits or provide additional justification.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}", "reject"]
+            },
+            "description": "Alternative: Manager rejects the expense, changing status from PENDING_MANAGER to REJECTED_MANAGER"
+          },
+          "response": []
+        }
+      ],
+      "description": "Manager reviews and approves/rejects expense requests"
+    },
+    {
+      "name": "4. Finance Flow - Final Processing",
+      "item": [
+        {
+          "name": "Get Pending Expenses for Finance Approval",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{finance_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/pending-finance-approval",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "pending-finance-approval"]
+            },
+            "description": "Finance team gets all expenses pending their approval"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Expense with Payout Details (Finance)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{finance_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"note\": \"Expense approved for payment. Amount verified against receipt. Payment will be processed via direct bank transfer to employee account.\",\n    \"reimbursementMethod\": \"Direct Bank Transfer\",\n    \"expectedPayoutDate\": \"2024-11-15\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}/finance-approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}", "finance-approve"]
+            },
+            "description": "Finance approves and processes the expense for payment, changing status from PENDING_FINANCE to PAID"
+          },
+          "response": []
+        },
+        {
+          "name": "Reject Expense (Finance) - Alternative",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{finance_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"rejectionReason\": \"Receipt does not match the claimed amount. Discrepancy found in the submitted documentation.\",\n    \"note\": \"Please provide a corrected receipt or revised expense amount for resubmission.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}/finance-reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}", "finance-reject"]
+            },
+            "description": "Alternative: Finance rejects the expense, changing status from PENDING_FINANCE to REJECTED_FINANCE"
+          },
+          "response": []
+        }
+      ],
+      "description": "Finance team processes final approvals and payments"
+    },
+    {
+      "name": "5. Verification & Status Tracking",
+      "item": [
+        {
+          "name": "Final Status Check (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/{{expense_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "{{expense_id}}"]
+            },
+            "description": "Check final status of the expense after complete workflow"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All My Expenses - Final Check (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/my-expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "my-expenses"]
+            },
+            "description": "Get complete list of employee expenses to verify workflow completion"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Rejected Expenses (Employee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/expenses/my-rejected",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses", "my-rejected"]
+            },
+            "description": "Get all rejected expenses for the employee"
+          },
+          "response": []
+        }
+      ],
+      "description": "Final verification and status tracking"
+    },
+    {
+      "name": "6. Additional Test Scenarios",
+      "item": [
+        {
+          "name": "Create Another Expense (Different Employee)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Software Training Course\",\n    \"description\": \"Online training course for React.js development skills enhancement\",\n    \"amount\": 299.00,\n    \"receiptUrl\": \"https://example.com/receipts/training_course_001.pdf\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses"]
+            },
+            "description": "Create another expense for additional testing"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Minimal Expense (Required Fields Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Office Lunch\",\n    \"amount\": 12.50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/expenses",
+              "host": ["{{base_url}}"],
+              "path": ["api", "expenses"]
+            },
+            "description": "Create expense with only required fields to test validation"
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Check if the API is running"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (Employee)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{employee_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout current user session"
+          },
+          "response": []
+        }
+      ],
+      "description": "Additional test scenarios and edge cases"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "employee_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "manager_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "finance_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "expense_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employee_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "manager_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "finance_user_id",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
