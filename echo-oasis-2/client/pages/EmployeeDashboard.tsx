@@ -66,8 +66,9 @@ export default function EmployeeDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       toast({
-        title: "Success",
-        description: "Expense created successfully!",
+        title: "Expense Submitted! ✅",
+        description:
+          "Your expense has been submitted successfully and managers have been notified. You'll receive a notification when it's reviewed.",
       });
     },
     onError: (error: Error) => {

@@ -34,6 +34,9 @@ public class ExpenseService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private NotificationService notificationService;
+
     /**
      * Create a new expense request (starts as PENDING_MANAGER)
      */
@@ -53,8 +56,12 @@ public class ExpenseService {
         // Save the expense
         ExpenseRequest savedExpense = expenseRequestRepository.save(expense);
 
+        // Notify managers of new expense submission
+        notificationService.notifyManagersOfNewExpense(savedExpense);
+
         // Convert to response DTO
-        return convertToResponseDto(savedExpense);
+        ExpenseRequestResponseDto responseDto = convertToResponseDto(savedExpense);
+        return responseDto;
     }
 
     /**
@@ -294,7 +301,14 @@ public class ExpenseService {
         // Save the expense (this will cascade save the manager action)
         ExpenseRequest savedExpense = expenseRequestRepository.save(expense);
 
-        return convertToResponseDto(savedExpense);
+        // Notify employee and finance team of manager approval
+        notificationService.notifyExpenseApprovedByManager(savedExpense, currentManager);
+
+        // Broadcast real-time update via SSE
+        ExpenseRequestResponseDto responseDto = convertToResponseDto(savedExpense);
+
+
+        return responseDto;
     }
 
     /**
@@ -335,7 +349,14 @@ public class ExpenseService {
         // Save the expense
         ExpenseRequest savedExpense = expenseRequestRepository.save(expense);
 
-        return convertToResponseDto(savedExpense);
+        // Notify employee of manager rejection
+        notificationService.notifyExpenseRejectedByManager(savedExpense, currentManager, actionRequest.getComment());
+
+        // Broadcast real-time update via SSE
+        ExpenseRequestResponseDto responseDto = convertToResponseDto(savedExpense);
+
+
+        return responseDto;
     }
 
     // ============= FINANCE OPERATIONS =============
@@ -440,7 +461,14 @@ public class ExpenseService {
         // Save the expense (this will cascade save the finance action)
         ExpenseRequest savedExpense = expenseRequestRepository.save(expense);
 
-        return convertToResponseDto(savedExpense);
+        // Notify employee of finance approval
+        notificationService.notifyExpenseApprovedByFinance(savedExpense, currentFinanceUser);
+
+        // Broadcast real-time update via SSE
+        ExpenseRequestResponseDto responseDto = convertToResponseDto(savedExpense);
+
+
+        return responseDto;
     }
 
     /**
@@ -483,7 +511,14 @@ public class ExpenseService {
         // Save the expense
         ExpenseRequest savedExpense = expenseRequestRepository.save(expense);
 
-        return convertToResponseDto(savedExpense);
+        // Notify employee of finance rejection
+        notificationService.notifyExpenseRejectedByFinance(savedExpense, currentFinanceUser, rejectionRequest.getComment());
+
+        // Broadcast real-time update via SSE
+        ExpenseRequestResponseDto responseDto = convertToResponseDto(savedExpense);
+
+
+        return responseDto;
     }
 
     /**

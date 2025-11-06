@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useManagerExpenses } from "@/hooks/use-manager-expenses";
+import { useToast } from "@/hooks/use-toast";
 import { expenseApiService } from "@/lib/api/employee-expense-api";
 import type { ExpenseResponse } from "@/lib/api/employee-expense-api";
 
@@ -26,6 +27,7 @@ export default function ManagerDashboard() {
   const [activeTab, setActiveTab] = useState(0);
   const [selectedExpenses, setSelectedExpenses] = useState<string[]>([]);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Manager expenses hook
   const {
@@ -160,10 +162,29 @@ export default function ManagerDashboard() {
     expenseId: number,
     comment?: string,
   ) => {
-    if (actionDialog.action === "approve") {
-      await approveExpense(expenseId, comment);
-    } else if (actionDialog.action === "reject" && comment) {
-      await rejectExpense(expenseId, comment);
+    try {
+      if (actionDialog.action === "approve") {
+        await approveExpense(expenseId, comment);
+        toast({
+          title: "Expense Approved! ✅",
+          description:
+            "The expense has been approved and forwarded to finance. The employee and finance team have been notified.",
+        });
+      } else if (actionDialog.action === "reject" && comment) {
+        await rejectExpense(expenseId, comment);
+        toast({
+          title: "Expense Rejected",
+          description:
+            "The expense has been rejected and the employee has been notified with your feedback.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to process expense",
+        variant: "destructive",
+      });
     }
   };
 
@@ -171,10 +192,29 @@ export default function ManagerDashboard() {
     expenseIds: number[],
     comment?: string,
   ) => {
-    if (batchActionDialog.action === "approve") {
-      await batchApproveExpenses(expenseIds, comment);
-    } else if (batchActionDialog.action === "reject" && comment) {
-      await batchRejectExpenses(expenseIds, comment);
+    try {
+      if (batchActionDialog.action === "approve") {
+        await batchApproveExpenses(expenseIds, comment);
+        toast({
+          title: `${expenseIds.length} Expenses Approved! ✅`,
+          description:
+            "All selected expenses have been approved and forwarded to finance. Employees and finance team have been notified.",
+        });
+      } else if (batchActionDialog.action === "reject" && comment) {
+        await batchRejectExpenses(expenseIds, comment);
+        toast({
+          title: `${expenseIds.length} Expenses Rejected`,
+          description:
+            "All selected expenses have been rejected and employees have been notified with your feedback.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to process expenses",
+        variant: "destructive",
+      });
     }
     // Clear selection after batch operation
     setSelectedExpenses([]);
@@ -349,45 +389,60 @@ export default function ManagerDashboard() {
               </div>
             ) : (
               <div className="space-y-3">
-                {pendingExpenses.slice(0, 3).map((expense) => (
-                  <div
-                    key={expense.id}
-                    className="p-4 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700"
-                  >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {expense.ref}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400 ml-2">
-                          from {expense.employee}
-                        </span>
-                        <span className="text-gray-600 dark:text-gray-400 ml-2">
-                          • {expense.amount}
-                        </span>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={() => handleSingleAction(expense, "approve")}
-                          disabled={loadingApprove}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleSingleAction(expense, "reject")}
-                          disabled={loadingReject}
-                        >
-                          Reject
-                        </Button>
+                {[...pendingExpenses]
+                  .sort((a, b) => parseInt(b.id) - parseInt(a.id))
+                  .slice(0, 3)
+                  .map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="p-4 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {expense.ref}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400 ml-2">
+                            from {expense.employee}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400 ml-2">
+                            • {expense.amount}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleViewExpense(expense)}
+                            disabled={loading}
+                          >
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() =>
+                              handleSingleAction(expense, "approve")
+                            }
+                            disabled={loadingApprove}
+                          >
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() =>
+                              handleSingleAction(expense, "reject")
+                            }
+                            disabled={loadingReject}
+                          >
+                            Reject
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

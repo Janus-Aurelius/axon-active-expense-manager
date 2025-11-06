@@ -296,14 +296,16 @@ export default function FinanceDashboard() {
       if (actionType === "approve") {
         await approveExpense(expenseId, actionData as FinanceActionRequest);
         toast({
-          title: "Success",
-          description: "Expense approved and payment processed successfully.",
+          title: "Payment Approved! 💳",
+          description:
+            "Expense has been approved for payment and the employee has been notified. Payment will be processed as scheduled.",
         });
       } else {
         await rejectExpense(expenseId, actionData as FinanceRejectionRequest);
         toast({
-          title: "Success",
-          description: "Expense rejected successfully.",
+          title: "Expense Rejected",
+          description:
+            "Expense has been rejected and the employee has been notified with your feedback.",
         });
       }
 
@@ -332,8 +334,8 @@ export default function FinanceDashboard() {
           actionData as FinanceActionRequest,
         );
         toast({
-          title: "Success",
-          description: `${expenseIds.length} expenses approved and payments processed successfully.`,
+          title: `${expenseIds.length} Payments Approved! 💳`,
+          description: `All selected expenses have been approved for payment and employees have been notified. Payments will be processed as scheduled.`,
         });
       } else {
         await batchRejectExpenses(
@@ -341,8 +343,8 @@ export default function FinanceDashboard() {
           (actionData as { comment: string }).comment,
         );
         toast({
-          title: "Success",
-          description: `${expenseIds.length} expenses rejected successfully.`,
+          title: `${expenseIds.length} Expenses Rejected`,
+          description: `All selected expenses have been rejected and employees have been notified with your feedback.`,
         });
       }
 
@@ -450,54 +452,81 @@ export default function FinanceDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {pendingExpenses.slice(0, 3).map((expense) => (
-                    <div
-                      key={expense.id}
-                      className="p-4 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700"
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {financeExpenseApiService.getExpenseReference(
-                              expense,
-                            )}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-400 ml-2">
-                            from {expense.employeeName}
-                          </span>
-                          <span className="text-gray-600 dark:text-gray-400 ml-2">
-                            •{" "}
-                            {financeExpenseApiService.formatAmount(
-                              expense.amount,
-                            )}
-                          </span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={() =>
-                              handleSingleAction(expense, "approve")
-                            }
-                            disabled={loading}
-                          >
-                            Approve & Pay
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() =>
-                              handleSingleAction(expense, "reject")
-                            }
-                            disabled={loading}
-                          >
-                            Reject
-                          </Button>
+                  {[...pendingExpenses]
+                    .sort((a, b) => b.id - a.id)
+                    .slice(0, 3)
+                    .map((expense) => (
+                      <div
+                        key={expense.id}
+                        className="p-4 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700"
+                      >
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {financeExpenseApiService.getExpenseReference(
+                                expense,
+                              )}
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-400 ml-2">
+                              from {expense.employeeName}
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-400 ml-2">
+                              •{" "}
+                              {financeExpenseApiService.formatAmount(
+                                expense.amount,
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleViewExpense({
+                                  id: expense.id.toString(),
+                                  ref: financeExpenseApiService.getExpenseReference(
+                                    expense,
+                                  ),
+                                  employee: expense.employeeName,
+                                  amount: financeExpenseApiService.formatAmount(
+                                    expense.amount,
+                                  ),
+                                  date: financeExpenseApiService.formatDate(
+                                    expense.createdAt,
+                                  ),
+                                  status: "pending",
+                                  statusLabel: "Manager Approved",
+                                })
+                              }
+                              disabled={loading}
+                            >
+                              View
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={() =>
+                                handleSingleAction(expense, "approve")
+                              }
+                              disabled={loading}
+                            >
+                              Approve & Pay
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() =>
+                                handleSingleAction(expense, "reject")
+                              }
+                              disabled={loading}
+                            >
+                              Reject
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               )}
             </div>
@@ -523,7 +552,7 @@ export default function FinanceDashboard() {
                 onSelectionChange={setSelectedExpenses}
                 showActions={true}
                 onRowAction={handleRowAction}
-                actionTypes={["approve", "reject"]}
+                actionTypes={["view", "approve", "reject"]}
               />
             )}
           </div>

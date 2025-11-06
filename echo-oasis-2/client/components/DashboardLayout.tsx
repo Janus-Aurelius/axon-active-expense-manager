@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LogOut, Menu, Sun, Moon, LucideIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import NotificationBell from "@/components/NotificationBell";
 
 interface NavigationTab {
   id: number;
@@ -245,6 +246,7 @@ export default function DashboardLayout({
                 {action.label}
               </Button>
             ))}
+            <NotificationBell isDarkMode={isDarkMode} />
             <Button
               variant="outline"
               className={

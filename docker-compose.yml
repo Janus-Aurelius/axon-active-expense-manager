@@ -42,18 +42,18 @@ services:
     networks:
       - expense-manager-network
 
-  # Frontend (Nginx)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: expense-manager-frontend
-    ports:
-      - "${FRONTEND_PORT}:80"
-    depends_on:
-      - backend
-    networks:
-      - expense-manager-network
+  # # Frontend (Nginx)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: expense-manager-frontend
+  #   ports:
+  #     - "${FRONTEND_PORT}:80"
+  #   depends_on:
+  #     - backend
+  #   networks:
+  #     - expense-manager-network
 
 volumes:
   postgres_data:
