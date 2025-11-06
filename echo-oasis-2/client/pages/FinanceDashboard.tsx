@@ -6,11 +6,22 @@ import ExpenseTable, {
 } from "@/components/ExpenseTable";
 import FinanceActionDialog from "@/components/FinanceActionDialog";
 import BatchFinanceActionDialog from "@/components/BatchFinanceActionDialog";
+import ViewExpenseModal from "@/components/ViewExpenseModal";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useFinanceExpenses } from "@/hooks/use-finance-expenses";
-import { Home, DollarSign, CheckCircle, Clock } from "lucide-react";
+import {
+  Home,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  RefreshCw,
+  AlertCircle,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { financeExpenseApiService } from "@/lib/api/finance-expense-api";
+import { expenseApiService } from "@/lib/api/employee-expense-api";
 import type { ExpenseResponse } from "@/lib/api/employee-expense-api";
 import type {
   FinanceActionRequest,
@@ -53,6 +64,17 @@ export default function FinanceDashboard() {
   }>({
     expenses: [],
     actionType: null,
+  });
+
+  // View modal state
+  const [viewModal, setViewModal] = useState<{
+    open: boolean;
+    expense: ExpenseResponse | null;
+    loading: boolean;
+  }>({
+    open: false,
+    expense: null,
+    loading: false,
   });
 
   // Convert backend expense data to frontend ExpenseData format
@@ -158,16 +180,35 @@ export default function FinanceDashboard() {
     });
   };
 
+  const handleSingleAction = (
+    expense: ExpenseResponse,
+    action: "approve" | "reject",
+  ) => {
+    setActionDialog({
+      expense: expense,
+      actionType: action,
+    });
+  };
+
   const headerActions = [
     {
-      label: "✓ Approve & Pay",
-      className: "bg-green-600 hover:bg-green-700 text-white",
-      onClick: handleBatchApprove,
+      label: "🔄 Refresh",
+      variant: "outline" as const,
+      onClick: refreshData,
+      disabled: loading,
+      icon: RefreshCw,
     },
     {
-      label: "✕ Reject",
+      label: `✓ Approve & Pay Selected (${selectedExpenses.length})`,
+      className: "bg-green-600 hover:bg-green-700 text-white",
+      onClick: handleBatchApprove,
+      disabled: selectedExpenses.length === 0 || loading,
+    },
+    {
+      label: `✕ Reject Selected (${selectedExpenses.length})`,
       className: "bg-red-600 hover:bg-red-700 text-white",
       onClick: handleBatchReject,
+      disabled: selectedExpenses.length === 0 || loading,
     },
   ];
 
@@ -210,21 +251,37 @@ export default function FinanceDashboard() {
     department: "Finance",
   };
 
-  const handleRowAction = (expense: ExpenseData, action: string) => {
-    const expenseObject = pendingExpenses.find(
-      (exp) => exp.id.toString() === expense.id,
-    );
-    if (!expenseObject) return;
+  const handleRowAction = async (expense: ExpenseData, action: string) => {
+    if (action === "approve" || action === "reject") {
+      const expenseObject = pendingExpenses.find(
+        (exp) => exp.id.toString() === expense.id,
+      );
+      if (!expenseObject) return;
 
-    if (action === "approve") {
       setActionDialog({
         expense: expenseObject,
-        actionType: "approve",
+        actionType: action as "approve" | "reject",
       });
-    } else if (action === "reject") {
-      setActionDialog({
-        expense: expenseObject,
-        actionType: "reject",
+    } else if (action === "view") {
+      await handleViewExpense(expense);
+    }
+  };
+
+  const handleViewExpense = async (expense: ExpenseData) => {
+    setViewModal({ open: true, expense: null, loading: true });
+
+    try {
+      const expenseDetails = await expenseApiService.getExpenseById(
+        parseInt(expense.id),
+      );
+      setViewModal({ open: true, expense: expenseDetails, loading: false });
+    } catch (error) {
+      console.error("Failed to fetch expense details:", error);
+      setViewModal({ open: false, expense: null, loading: false });
+      toast({
+        title: "Error",
+        description: "Failed to load expense details",
+        variant: "destructive",
       });
     }
   };
@@ -332,11 +389,29 @@ export default function FinanceDashboard() {
         statusInfo={statusInfo}
         userInfo={userInfo}
       >
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+            <span className="ml-2 text-gray-600 dark:text-gray-400">
+              Loading expenses...
+            </span>
+          </div>
+        )}
+
         {/* HOME TAB */}
-        {activeTab === 0 && (
+        {activeTab === 0 && !loading && (
           <div>
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
-              Home
+              Finance Overview
             </h2>
             <div className="grid grid-cols-3 gap-6">
               <div className="p-6 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
@@ -364,26 +439,80 @@ export default function FinanceDashboard() {
                 </div>
               </div>
             </div>
+
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+                Recent Actions Required
+              </h3>
+              {pendingExpenses.length === 0 ? (
+                <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                  No pending expenses requiring action.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingExpenses.slice(0, 3).map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="p-4 rounded-lg bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {financeExpenseApiService.getExpenseReference(
+                              expense,
+                            )}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400 ml-2">
+                            from {expense.employeeName}
+                          </span>
+                          <span className="text-gray-600 dark:text-gray-400 ml-2">
+                            •{" "}
+                            {financeExpenseApiService.formatAmount(
+                              expense.amount,
+                            )}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() =>
+                              handleSingleAction(expense, "approve")
+                            }
+                            disabled={loading}
+                          >
+                            Approve & Pay
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() =>
+                              handleSingleAction(expense, "reject")
+                            }
+                            disabled={loading}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* TO PAY TAB */}
-        {activeTab === 1 && (
+        {activeTab === 1 && !loading && (
           <div>
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
               To Pay
             </h2>
-            {loading ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  Loading expenses...
-                </p>
-              </div>
-            ) : expenses.length === 0 ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  No expenses awaiting payment
-                </p>
+            {expenses.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                No expenses awaiting payment.
               </div>
             ) : (
               <ExpenseTable
@@ -394,64 +523,51 @@ export default function FinanceDashboard() {
                 onSelectionChange={setSelectedExpenses}
                 showActions={true}
                 onRowAction={handleRowAction}
+                actionTypes={["approve", "reject"]}
               />
             )}
           </div>
         )}
 
         {/* PAID TAB */}
-        {activeTab === 2 && (
+        {activeTab === 2 && !loading && (
           <div>
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
-              Paid
+              Paid Expenses
             </h2>
-            {loading ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  Loading paid expenses...
-                </p>
-              </div>
-            ) : paidExpensesData.length === 0 ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  No paid expenses yet
-                </p>
+            {paidExpensesData.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                No paid expenses yet.
               </div>
             ) : (
               <ExpenseTable
                 data={paidExpensesData}
                 columns={expenseColumns}
-                showActions={false}
+                showActions={true}
                 onRowAction={handleRowAction}
+                actionTypes={["view"]}
               />
             )}
           </div>
         )}
 
         {/* HISTORY TAB */}
-        {activeTab === 3 && (
+        {activeTab === 3 && !loading && (
           <div>
             <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-white">
               Finance History
             </h2>
-            {loading ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  Loading expense history...
-                </p>
-              </div>
-            ) : convertToExpenseData(historyExpenses).length === 0 ? (
-              <div className="p-8 rounded-lg text-center bg-white border border-gray-200 dark:bg-slate-800 dark:border-slate-700">
-                <p className="text-lg text-gray-600 dark:text-gray-400">
-                  No expense history found
-                </p>
+            {convertToExpenseData(historyExpenses).length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                No expense history found.
               </div>
             ) : (
               <ExpenseTable
                 data={convertToExpenseData(historyExpenses)}
                 columns={expenseColumns}
-                showActions={false}
+                showActions={true}
                 onRowAction={handleRowAction}
+                actionTypes={["view"]}
               />
             )}
           </div>
@@ -473,6 +589,15 @@ export default function FinanceDashboard() {
         isOpen={batchActionDialog.expenses.length > 0}
         onClose={closeBatchActionDialog}
         onBatchAction={handleBatchExpenseAction}
+      />
+
+      <ViewExpenseModal
+        isOpen={viewModal.open}
+        onClose={() =>
+          setViewModal({ open: false, expense: null, loading: false })
+        }
+        expense={viewModal.expense}
+        loading={viewModal.loading}
       />
     </>
   );
